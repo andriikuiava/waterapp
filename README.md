@@ -14,7 +14,7 @@
 
 - Клонуйте репозиторій
 ```
-git clone https://github.com/your-repo/water-tracker.git
+git clone https://github.com/andriikuiava/waterapp
 ```
 
 - Встановити залежності:
