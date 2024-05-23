@@ -1,0 +1,33 @@
+name: waterapp
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.4 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  shared_preferences: ^2.2.3
+  flutter_launcher_icons: ^0.13.1
+  flutter_local_notifications: ^17.1.2
+  flutter_native_timezone: ^2.0.0
+  flutter_animation_progress_bar: ^2.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon/waterappicon.png"
+
+flutter:
+  assets:
+    - assets/images/
+  uses-material-design: true
