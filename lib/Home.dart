@@ -1,165 +1,18 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_animation_progress_bar/flutter_animation_progress_bar.dart';
-import 'package:timezone/timezone.dart' as tz;
-import 'package:timezone/data/latest.dart' as tzdata;
-import 'package:flutter_native_timezone/flutter_native_timezone.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:waterapp/AppState.dart';
 import 'package:waterapp/WelcomeScreen.dart';
+import 'package:waterapp/BuildDrinkingEntry.dart';
+import 'package:waterapp/ColorTheme.dart';
 
-class HomePage extends StatefulWidget {
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  int wakeUpTimeHour = 0;
-  int wakeUpTimeMinute = 0;
-  int sleepTimeHour = 0;
-  int sleepTimeMinute = 0;
-  int recommendedCups = 0;
-  int drankCups = 0;
-  String userName = "";
-  FlutterLocalNotificationsPlugin localNotificationsPlugin = FlutterLocalNotificationsPlugin();
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeNotifications();
-    _loadPreferences();
-  }
-
-  void _initializeNotifications() {
-    var prefs = SharedPreferences.getInstance();
-    var initializationSettingsIOS = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
-    var initializationSettings = InitializationSettings(
-      iOS: initializationSettingsIOS,
-    );
-
-    localNotificationsPlugin = FlutterLocalNotificationsPlugin();
-    localNotificationsPlugin.initialize(
-      initializationSettings
-    );
-  }
-
-  Future<void> _scheduleNotifications() async {
-    var prefs = await SharedPreferences.getInstance();
-    String scheduleJson = prefs.getString("drinking_schedule") ?? "[]";
-    List<dynamic> schedule = jsonDecode(scheduleJson);
-
-    for (int i = 0; i < schedule.length; i++) {
-      var timeParts = schedule[i].split(":");
-      int hour = int.parse(timeParts[0].trim());
-      int minute = int.parse(timeParts[1].trim());
-
-      tzdata.initializeTimeZones();
-      String timeZoneName = await FlutterNativeTimezone.getLocalTimezone();
-      var time = tz.TZDateTime(tz.getLocation(timeZoneName), DateTime.now().year, DateTime.now().month, DateTime.now().day , hour, minute);
-      if (time.isBefore(tz.TZDateTime.now(tz.getLocation(timeZoneName))) || time.isAtSameMomentAs(tz.TZDateTime.now(tz.getLocation(timeZoneName)))) {
-        time = tz.TZDateTime(tz.getLocation(timeZoneName), DateTime.now().year, DateTime.now().month, DateTime.now().day + 1 , hour, minute);
-      }
-      NotificationDetails notificationDetails = NotificationDetails(
-          iOS: DarwinNotificationDetails(
-              presentAlert: true,
-              presentBadge: true,
-              presentSound: true
-          )
-      );
-      UILocalNotificationDateInterpretation uiLocalNotificationDateInterpretation = UILocalNotificationDateInterpretation.absoluteTime;
-      await localNotificationsPlugin.zonedSchedule(
-          i,
-          'Drink Water!',
-          'It is time to drink water!',
-          time,
-          notificationDetails,
-          uiLocalNotificationDateInterpretation: uiLocalNotificationDateInterpretation
-      );
-      print(time);
-    }
-  }
-
-  _loadPreferences() async {
-    var prefs = await SharedPreferences.getInstance();
-    setState(() {
-      wakeUpTimeHour = prefs.getInt("wakeUpTimeHour") ?? 0;
-      wakeUpTimeMinute = prefs.getInt("wakeUpTimeMinute") ?? 0;
-      sleepTimeHour = prefs.getInt("sleepTimeHour") ?? 0;
-      sleepTimeMinute = prefs.getInt("sleepTimeMinute") ?? 0;
-      recommendedCups = prefs.getInt("recommended_cups") ?? 0;
-      drankCups = prefs.getInt("drank_cups") ?? 0;
-      userName = prefs.getString("userName") ?? "";
-    });
-    prefs.setString("drinking_schedule", generateDrinkingSchedule());
-    _scheduleNotifications();
-  }
-
-  int calculateAwakeTime() {
-    int wakeUpTimeInMinutes = wakeUpTimeHour * 60 + wakeUpTimeMinute;
-    int sleepTimeInMinutes = sleepTimeHour * 60 + sleepTimeMinute;
-    int awakeTimeInMinutes = sleepTimeInMinutes - wakeUpTimeInMinutes;
-    if (awakeTimeInMinutes < 0) {
-      awakeTimeInMinutes += 24 * 60;
-    }
-    return awakeTimeInMinutes ~/ 60;
-  }
-
-  double calculateCupsPerHour() {
-    int awakeTime = calculateAwakeTime();
-    if (awakeTime == 0) return 0;
-    return recommendedCups / awakeTime;
-  }
-
-  String generateDrinkingSchedule() {
-    int wakeUpTimeInMinutes = wakeUpTimeHour * 60 + wakeUpTimeMinute;
-    int sleepTimeInMinutes = sleepTimeHour * 60 + sleepTimeMinute;
-    int awakeTimeInMinutes = sleepTimeInMinutes - wakeUpTimeInMinutes;
-    if (awakeTimeInMinutes < 0) {
-      awakeTimeInMinutes += 24 * 60;
-    }
-
-    if (awakeTimeInMinutes == 0 || recommendedCups == 0) return "[]";
-
-    int intervalInMinutes = awakeTimeInMinutes ~/ recommendedCups;
-    int currentTimeInMinutes = wakeUpTimeInMinutes;
-
-    List<String> schedule = [];
-    for (int i = 0; i < recommendedCups; i++) {
-      int currentHour = currentTimeInMinutes ~/ 60;
-      int currentMinute = currentTimeInMinutes % 60;
-      schedule.add("$currentHour : $currentMinute");
-      currentTimeInMinutes += intervalInMinutes;
-      if (currentTimeInMinutes >= sleepTimeInMinutes) {
-        break;
-      }
-    }
-
-    return jsonEncode(schedule);
-  }
-
-  void resetDrankCups() async {
-    var prefs = await SharedPreferences.getInstance();
-    await prefs.setInt("drank_cups", 0);
-    setState(() {
-      drankCups = 0;
-    });
-  }
-
+class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    Future<void> markTimeAsLogged() async {
-      var prefs = await SharedPreferences.getInstance();
-      int newDrankCups = (prefs.getInt("drank_cups") ?? 0) + 1;
-      await prefs.setInt("drank_cups", newDrankCups);
-      setState(() {
-        drankCups = newDrankCups;
-      });
-    }
+    final appState = Provider.of<AppState>(context);
     return CupertinoPageScaffold(
       child: SingleChildScrollView(
         child: Column(
@@ -173,15 +26,18 @@ class _HomePageState extends State<HomePage> {
                   width: 40,
                   height: 200,
                   child: FAProgressBar(
-                    borderRadius: BorderRadiusGeometry.lerp(BorderRadius.zero, BorderRadius.circular(10), 1),
-                    currentValue: (drankCups == 0 ? 1 : 100 * drankCups / recommendedCups),
+                    borderRadius: BorderRadiusGeometry.lerp(
+                        BorderRadius.zero, BorderRadius.circular(10), 1),
+                    currentValue: (appState.drankCups == 0
+                        ? 1
+                        : 100 * appState.drankCups / appState.recommendedCups),
                     verticalDirection: VerticalDirection.up,
                     direction: Axis.vertical,
                     displayText: '%',
                     progressGradient: LinearGradient(
-                      colors: (drankCups / recommendedCups) < 1
-                        ? [Colors.blue, Colors.blue.shade900]
-                        : [Colors.green, Colors.green.shade900],
+                      colors: (appState.drankCups / appState.recommendedCups) < 1
+                          ? [AppColors.primary, AppColors.primaryDark]
+                          : [AppColors.success, AppColors.successDark],
                     ),
                   ),
                 ),
@@ -191,95 +47,112 @@ class _HomePageState extends State<HomePage> {
                   child: Container(
                     padding: EdgeInsets.all(20),
                     height: 200,
-                    color: Colors.blue,
+                    color: AppColors.primary,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        (drankCups / recommendedCups) < 1
-                          ? Column(
+                        (appState.drankCups / appState.recommendedCups) < 1
+                            ? Column(
                           children: [
                             Container(
-                                width: MediaQuery.of(context).size.width * 0.7,
+                                width: MediaQuery.of(context).size.width *
+                                    0.7,
                                 child: Row(
                                   children: [
                                     Text(
-                                      "Welcome, $userName!",
-                                      style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                                      "Welcome, ${appState.userName}!",
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          color: AppColors.white,
+                                          fontWeight: FontWeight.bold),
                                       textAlign: TextAlign.center,
                                     ),
                                     Spacer(),
                                   ],
-                                )
-                            ),
+                                )),
                             Container(
-                                width: MediaQuery.of(context).size.width * 0.7,
+                                width: MediaQuery.of(context).size.width *
+                                    0.7,
                                 child: Row(
                                   children: [
                                     Text(
-                                      "Drank: $drankCups cups",
-                                      style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                                      "Drank: ${appState.drankCups} cups",
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          color: AppColors.white,
+                                          fontWeight: FontWeight.bold),
                                       textAlign: TextAlign.center,
                                     ),
                                     Spacer(),
                                   ],
-                                )
-                            ),
+                                )),
                             Container(
-                                width: MediaQuery.of(context).size.width * 0.7,
+                                width: MediaQuery.of(context).size.width *
+                                    0.7,
                                 child: Row(
                                   children: [
                                     Text(
-                                      "Goal: $recommendedCups cups",
-                                      style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                                      "Goal: ${appState.recommendedCups} cups",
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          color: AppColors.white,
+                                          fontWeight: FontWeight.bold),
                                       textAlign: TextAlign.center,
                                     ),
                                     Spacer(),
                                   ],
-                                )
-                            ),
+                                )),
                             Container(
-                                width: MediaQuery.of(context).size.width * 0.7,
+                                width: MediaQuery.of(context).size.width *
+                                    0.7,
                                 child: Row(
                                   children: [
                                     Text(
-                                      "${recommendedCups - drankCups} cups to go!",
-                                      style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                                      "${appState.recommendedCups - appState.drankCups} cups to go!",
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          color: AppColors.white,
+                                          fontWeight: FontWeight.bold),
                                       textAlign: TextAlign.center,
                                     ),
                                     Spacer(),
                                   ],
-                                )
-                            ),
+                                )),
                             Container(
-                                width: MediaQuery.of(context).size.width * 0.7,
+                                width: MediaQuery.of(context).size.width *
+                                    0.7,
                                 child: Row(
                                   children: [
                                     Text(
-                                      "It is about ${calculateCupsPerHour().toStringAsFixed(2)} cups per hour!",
-                                      style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                                      "It is about ${appState.calculateCupsPerHour().toStringAsFixed(2)} cups per hour!",
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          color: AppColors.white,
+                                          fontWeight: FontWeight.bold),
                                       textAlign: TextAlign.center,
                                     ),
                                     Spacer(),
                                   ],
-                                )
-                            ),
+                                )),
                             SizedBox(height: 10)
                           ],
                         )
-                        : Container(
+                            : Container(
                             width: MediaQuery.of(context).size.width * 0.7,
                             child: Row(
                               children: [
                                 Spacer(),
                                 Text(
-                                  "Well done, $userName!\nYou have reached your goal!\n You drank $drankCups cups today!",
-                                  style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                                  "Well done, ${appState.userName}!\nYou have reached your goal!\n You drank ${appState.drankCups} cups today!",
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      color: AppColors.white,
+                                      fontWeight: FontWeight.bold),
                                   textAlign: TextAlign.center,
                                 ),
                                 Spacer(),
                               ],
-                            )
-                        ),
+                            )),
                         Row(
                           children: [
                             Container(
@@ -287,12 +160,12 @@ class _HomePageState extends State<HomePage> {
                               height: 50,
                               child: CupertinoButton(
                                 padding: EdgeInsets.all(0),
-                                color: Colors.blue.shade900,
+                                color: AppColors.primaryDark,
                                 child: Icon(
                                   Icons.restart_alt,
-                                  color: Colors.white,
+                                  color: AppColors.white,
                                 ),
-                                onPressed: resetDrankCups,
+                                onPressed: appState.resetDrankCups,
                               ),
                             ),
                             SizedBox(width: 10),
@@ -300,12 +173,15 @@ class _HomePageState extends State<HomePage> {
                               height: 50,
                               child: CupertinoButton(
                                 padding: EdgeInsets.symmetric(horizontal: 20),
-                                color: Colors.blue.shade900,
+                                color: AppColors.primaryDark,
                                 child: Text(
                                   "Mark as Drank",
-                                  style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      color: AppColors.white,
+                                      fontWeight: FontWeight.bold),
                                 ),
-                                onPressed: markTimeAsLogged,
+                                onPressed: appState.drinkCup,
                               ),
                             )
                           ],
@@ -323,7 +199,10 @@ class _HomePageState extends State<HomePage> {
                 SizedBox(width: 20),
                 Text(
                   "Your Drinking Schedule",
-                  style: TextStyle(fontSize: 20, color: Colors.blue, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      fontSize: 20,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold),
                   textAlign: TextAlign.center,
                 ),
                 Spacer(),
@@ -335,75 +214,45 @@ class _HomePageState extends State<HomePage> {
               physics: NeverScrollableScrollPhysics(),
               crossAxisCount: 2,
               childAspectRatio: 3,
-              children: List.generate(recommendedCups, (index) {
-                return buildDrinkingEntry(context, jsonDecode(generateDrinkingSchedule())[index], index == recommendedCups - 1);
+              children: List.generate(appState.recommendedCups, (index) {
+                return buildDrinkingEntry(
+                    context,
+                    jsonDecode(appState.generateDrinkingSchedule())[index],
+                    index == appState.recommendedCups - 1);
               }),
             ),
             CupertinoButton(
-              padding: EdgeInsets.all(0),
-              child: Container(
-                height: 40,
-                width: MediaQuery.of(context).size.width * 0.7,
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Center(
-                  child: Text(
-                    "Reset App",
-                    style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                )
-              ),
-              onPressed: () async {
-                var prefs = await SharedPreferences.getInstance();
-                await prefs.clear();
-                localNotificationsPlugin.cancelAll();
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => WelcomeScreen()),
-                      (Route<dynamic> route) => false,
-                );
-              }
-            ),
+                padding: EdgeInsets.all(0),
+                child: Container(
+                    height: 40,
+                    width: MediaQuery.of(context).size.width * 0.7,
+                    decoration: BoxDecoration(
+                      color: AppColors.accent,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Center(
+                      child: Text(
+                        "Reset App",
+                        style: TextStyle(
+                            fontSize: 16,
+                            color: AppColors.white,
+                            fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    )),
+                onPressed: () async {
+                  var prefs = await SharedPreferences.getInstance();
+                  await prefs.clear();
+                  appState.localNotificationsPlugin.cancelAll();
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => WelcomeScreen()),
+                        (Route<dynamic> route) => false,
+                  );
+                }),
             SizedBox(height: 20),
           ],
         ),
       ),
-    );
-  }
-
-  Widget buildDrinkingEntry(BuildContext context, String time, bool isLast) {
-    var timeParts = time.split(':');
-    var hour = int.parse(timeParts[0].trim());
-    var minute = int.parse(timeParts[1].trim());
-
-    var formattedHour = hour < 10 ? '0$hour' : hour.toString();
-    var formattedMinute = minute < 10 ? '0$minute' : minute.toString();
-
-    return Column(
-      children: [
-        Container(
-          padding: EdgeInsets.all(10),
-          margin: EdgeInsets.only(top: 10, left: 20, right: 20),
-          decoration: BoxDecoration(
-            color: Colors.blue,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            children: [
-              Spacer(),
-              Text(
-                "$formattedHour : $formattedMinute",
-                style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              Spacer(),
-            ],
-          ),
-        ),
-        (isLast ? SizedBox(height: 10) : SizedBox()),
-      ],
     );
   }
 }
