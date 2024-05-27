@@ -1,11 +1,10 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:waterapp/AppState.dart';
+import 'package:waterapp/ColorTheme.dart';
 import 'package:waterapp/Home.dart';
 import 'package:waterapp/WelcomeScreen.dart';
-import 'package:waterapp/ColorTheme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

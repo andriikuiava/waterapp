@@ -1,8 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:waterapp/SetUpNotifications.dart';
 import 'package:waterapp/ColorTheme.dart';
+import 'package:waterapp/SetUpNotifications.dart';
 
 class WeightAndHeightScreen extends StatefulWidget {
   @override
@@ -227,21 +227,15 @@ class _WeightAndHeightScreenState extends State<WeightAndHeightScreen> {
                             prefs.setInt("weight", int.parse(weight));
                             prefs.setInt("height", int.parse(height));
                             prefs.setInt("age", int.parse(age));
-                            prefs.setInt(
-                                "recommended_ml",
-                                calculateWaterIntake(int.parse(weight),
-                                    int.parse(height), int.parse(age)));
+                            prefs.setInt("recommended_ml", calculateWaterIntake(int.parse(weight), int.parse(height), int.parse(age)));
                             prefs.setInt("wakeUpTimeHour", 8);
                             prefs.setInt("wakeUpTimeMinute", 0);
                             prefs.setInt("sleepTimeHour", 22);
                             prefs.setInt("sleepTimeMinute", 0);
-                            int recommendedMl = calculateWaterIntake(
-                                int.parse(weight), int.parse(height), int.parse(age));
+                            int recommendedMl = calculateWaterIntake(int.parse(weight), int.parse(height), int.parse(age));
                             Navigator.push(
                               context,
-                              CupertinoPageRoute(
-                                  builder: (context) => SetUpNotifications(
-                                      key: null, recommendedMl: recommendedMl)),
+                              CupertinoPageRoute(builder: (context) => SetUpNotifications(key: null, recommendedMl: recommendedMl)),
                             );
                           }
                         },

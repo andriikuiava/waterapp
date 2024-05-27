@@ -1,13 +1,15 @@
 import 'dart:convert';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animation_progress_bar/flutter_animation_progress_bar.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:waterapp/AppState.dart';
-import 'package:waterapp/WelcomeScreen.dart';
-import 'package:waterapp/BuildDrinkingEntry.dart';
 import 'package:waterapp/ColorTheme.dart';
+import 'package:waterapp/WelcomeScreen.dart';
+import 'package:waterapp/Widgets/BuildDrinkingEntry.dart';
+import 'package:waterapp/Widgets/TextHomeScreenWidget.dart';
 
 class HomePage extends StatelessWidget {
   @override
@@ -54,105 +56,15 @@ class HomePage extends StatelessWidget {
                         (appState.drankCups / appState.recommendedCups) < 1
                             ? Column(
                           children: [
-                            Container(
-                                width: MediaQuery.of(context).size.width *
-                                    0.7,
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      "Welcome, ${appState.userName}!",
-                                      style: TextStyle(
-                                          fontSize: 16,
-                                          color: AppColors.white,
-                                          fontWeight: FontWeight.bold),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                    Spacer(),
-                                  ],
-                                )),
-                            Container(
-                                width: MediaQuery.of(context).size.width *
-                                    0.7,
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      "Drank: ${appState.drankCups} cups",
-                                      style: TextStyle(
-                                          fontSize: 16,
-                                          color: AppColors.white,
-                                          fontWeight: FontWeight.bold),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                    Spacer(),
-                                  ],
-                                )),
-                            Container(
-                                width: MediaQuery.of(context).size.width *
-                                    0.7,
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      "Goal: ${appState.recommendedCups} cups",
-                                      style: TextStyle(
-                                          fontSize: 16,
-                                          color: AppColors.white,
-                                          fontWeight: FontWeight.bold),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                    Spacer(),
-                                  ],
-                                )),
-                            Container(
-                                width: MediaQuery.of(context).size.width *
-                                    0.7,
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      "${appState.recommendedCups - appState.drankCups} cups to go!",
-                                      style: TextStyle(
-                                          fontSize: 16,
-                                          color: AppColors.white,
-                                          fontWeight: FontWeight.bold),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                    Spacer(),
-                                  ],
-                                )),
-                            Container(
-                                width: MediaQuery.of(context).size.width *
-                                    0.7,
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      "It is about ${appState.calculateCupsPerHour().toStringAsFixed(2)} cups per hour!",
-                                      style: TextStyle(
-                                          fontSize: 16,
-                                          color: AppColors.white,
-                                          fontWeight: FontWeight.bold),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                    Spacer(),
-                                  ],
-                                )),
+                            TextHomeScreenWidget(context, "Welcome, ${appState.userName}!"),
+                            TextHomeScreenWidget(context, "Drank: ${appState.drankCups} cups"),
+                            TextHomeScreenWidget(context, "Goal: ${appState.recommendedCups} cups"),
+                            TextHomeScreenWidget(context, "${appState.recommendedCups - appState.drankCups} cups to go!"),
+                            TextHomeScreenWidget(context, "It is about ${appState.calculateCupsPerHour().toStringAsFixed(2)} cups per hour!"),
                             SizedBox(height: 10)
                           ],
                         )
-                            : Container(
-                            width: MediaQuery.of(context).size.width * 0.7,
-                            child: Row(
-                              children: [
-                                Spacer(),
-                                Text(
-                                  "Well done, ${appState.userName}!\nYou have reached your goal!\n You drank ${appState.drankCups} cups today!",
-                                  style: TextStyle(
-                                      fontSize: 16,
-                                      color: AppColors.white,
-                                      fontWeight: FontWeight.bold),
-                                  textAlign: TextAlign.center,
-                                ),
-                                Spacer(),
-                              ],
-                            )),
+                            : TextHomeScreenWidget(context, "It is about ${appState.calculateCupsPerHour().toStringAsFixed(2)} cups per hour!"),
                         Row(
                           children: [
                             Container(
@@ -179,7 +91,8 @@ class HomePage extends StatelessWidget {
                                   style: TextStyle(
                                       fontSize: 16,
                                       color: AppColors.white,
-                                      fontWeight: FontWeight.bold),
+                                      fontWeight: FontWeight.bold
+                                  ),
                                 ),
                                 onPressed: appState.drinkCup,
                               ),
